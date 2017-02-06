@@ -5,5 +5,5 @@
 % those terms. So we separated them from rules and dont consult this file
 % from JIprolog.
 
-discontiguous node/5.
-discontiguous next/2.
+discontiguous node/7.
+discontiguous next/3.

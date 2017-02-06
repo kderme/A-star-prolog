@@ -26,6 +26,10 @@ public class Main {
 	private static int client;
 	private static Hashtable<Long,Node> nodes;
 	 
+	static private PrintWriter pwNodes=null;
+	static private PrintWriter pwNext=null;
+	static private PrintWriter pwRest=null;
+	
 	private static BufferedReader newBuff(String name)
 			throws UnsupportedEncodingException, FileNotFoundException {
 		String charset = "ISO-8859-7";
@@ -51,7 +55,7 @@ public class Main {
 		linestr = sc.next();
 		int num=myPrologParser.num("client");
 		line = linestr.split(",",num);
-		myPrologParser.writePrologFact("client", line, true);
+		myPrologParser.writePrologFact(pwRest,null,"client", line, true);
 		sc.close();
 
 		// TAXIS
@@ -76,7 +80,7 @@ public class Main {
 			linestr+=linestr2;
 			num=myPrologParser.num("taxi");
 			line = linestr.split(",",num);
-			myPrologParser.writePrologFact("taxi", line, true);
+			myPrologParser.writePrologFact(pwRest,null,"taxi", line, true);
 		}
 		sc.close();
 
@@ -88,20 +92,22 @@ public class Main {
 		while (linestr != null) {
 			num=myPrologParser.num("node");
 			line = linestr.split(",",num);
-			myPrologParser.writePrologFact("node", line, true);
 			long l=new Long(line[3]);
-			nodes.put(l,new Node(l));
+			if (nodes.get(l)==null){
+				nodes.put(l,new Node(l));
+			}
+			myPrologParser.writePrologFact(pwNodes,pwNext,"node", line, true);
 			linestr = in.readLine();
 		}
 		in.close();
-
+/*
 		// LINES
 		in = newBuff("lines");
 		linestr = in.readLine();
 		while (linestr != null) {
 			num=myPrologParser.num("line");
 			line = linestr.split(",",num);
-			myPrologParser.writePrologFact("line", line, true);
+			myPrologParser.writePrologFact(pwRest,"line", line, true);
 			linestr = in.readLine();
 		}
 		in.close();
@@ -112,10 +118,12 @@ public class Main {
 		while (linestr != null) {
 			num=myPrologParser.num("traffic");
 			line = linestr.split(",",num);
-			myPrologParser.writePrologFact("traffic", line, true);
+			myPrologParser.writePrologFact(pwRest, "traffic", line, true);
 			linestr = in.readLine();
 		}
+	
 		in.close();
+		*/
 	}
 
 	private static void _read_data_() throws UsageException {
@@ -178,32 +186,52 @@ public class Main {
 				to = new File(outputDirPath + "/rules.pl");
 				Files.copy(from.toPath(), to.toPath());
 				
-	//			to = new File(outputDirPath + "/facts.pl");
+				from = new File("common-files/all.pl");
+				to = new File(outputDirPath + "/all.pl");
+				Files.copy(from.toPath(), to.toPath());
+				
+				to = new File(outputDirPath + "/nodes.pl");
 				FileWriter fw = new FileWriter(to, true);
 				BufferedWriter bw = new BufferedWriter(fw);
-				myPrologParser=new PrologParser(new PrintWriter(bw));
+				pwNodes =new PrintWriter(bw);
+				
+				to = new File(outputDirPath + "/nextt.pl");
+				fw = new FileWriter(to, true);
+				bw = new BufferedWriter(fw);
+				pwNext =new PrintWriter(bw);
+				
+				to = new File(outputDirPath + "/rest.pl");
+				fw = new FileWriter(to, true);
+				bw = new BufferedWriter(fw);
+				pwRest =new PrintWriter(bw);
+				
+				myPrologParser=new PrologParser(nodes);
 			} catch (IOException e) {
 				e.printStackTrace();
 				throw new UsageException();
 			}
 
-			// append to prolog.pl
-			_read_data_();
-			myPrologParser.destroy();
-			
 			System.out
 					.println("################################################");
 			System.out
 					.println("#########   WELCOME TO TARIFAS-APP   ###########");
 			System.out
 					.println("################################################");
+
+			System.out.println("Creating prolog files from data...");
+			_read_data_();
+			pwNodes.close();
+			pwRest.close();
+			pwNext.close();
+			System.out.println("DONE\n");
 			
 			Asolver solver = new Asolver(inputDirPath,outputDirPath,nodes);
 			
 			solver.solve();
-					} catch (UsageException e) {
-			System.out.println(e.getMessage());
-			System.exit(0);
-		}
+					} 
+			catch (UsageException e) {
+				e.printStackTrace();
+				System.exit(0);
+			}
 	}
 }

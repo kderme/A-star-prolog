@@ -1,6 +1,25 @@
+import gnu.prolog.database.PrologTextLoaderError;
+import gnu.prolog.io.OperatorSet;
+import gnu.prolog.io.ParseException;
+import gnu.prolog.io.ReadOptions;
+import gnu.prolog.io.TermReader;
+import gnu.prolog.term.AtomTerm;
+import gnu.prolog.term.CompoundTerm;
+import gnu.prolog.term.CompoundTermTag;
+import gnu.prolog.vm.Environment;
+import gnu.prolog.vm.Interpreter;
+import gnu.prolog.vm.PrologCode;
+import gnu.prolog.vm.PrologException;
+
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.StringReader;
+import java.math.BigDecimal;
 import java.util.Hashtable;
+
+import jpl.Atom;
+import jpl.Query;
+import jpl.Term;
+import alice.tuprolog.Prolog;
 
 import com.ugos.jiprolog.engine.JIPEngine;
 import com.ugos.jiprolog.engine.JIPQuery;
@@ -8,6 +27,11 @@ import com.ugos.jiprolog.engine.JIPSyntaxErrorException;
 import com.ugos.jiprolog.engine.JIPTerm;
 import com.ugos.jiprolog.engine.JIPTermParser;
 
+import alice.tuprolog.InvalidTheoryException;
+import alice.tuprolog.MalformedGoalException;
+import alice.tuprolog.SolveInfo; 
+import alice.tuprolog.Theory; 
+import alice.tuprolog.Var;
 
 public class Asolver {
 	JIPEngine jip;
@@ -20,12 +44,84 @@ public class Asolver {
 	String outputDirPath;
 	
 	public Asolver(String inputDirPath,String outputDirPath,Hashtable<Long,Node> nodes) {
+		/* Query q1 =
+			    new Query(
+			        "consult",
+			        new Term[] {new Atom(outputDirPath+"/rules.pl")}
+			    );	*/
+		liSTars = new Hashtable<Integer,Astar>();
+		this.nodes=nodes;
 		jip = new JIPEngine();
+		parser = jip.getTermParser();
 		this.inputDirPath=inputDirPath;
 		this.outputDirPath=outputDirPath;
+		System.out.println(System.getProperty("java.library.path"));
+/*
+		String t0 = "consult('test.pl')";
+		if (!Query.hasSolution(t0)) {
+			System.out.println(t0 + " failed");
+			System.exit(1);
+		}
+*/		
+
+
+		Environment environment=new Environment();
+		System.out.println("Consulting prolog file for the first time");
+		environment.ensureLoaded(AtomTerm.get("common-files/rules2.pl"));
+		
+		System.out.println("DONE");
+//		environment.ensureLoaded(AtomTerm.get(outputDirPath+"/rules.pl"));
+		//get(Type);
+/*		
+		Interpreter interpreter;
+		interpreter = environment.createInterpreter();
+		environment.runInitialization(interpreter);
+		for (Object element : environment.getLoadingErrors())
+		{
+			PrologTextLoaderError err = (PrologTextLoaderError) element;
+			System.err.println(err);
+			// err.printStackTrace();
+		}
+		StringReader rd = new StringReader("a(b)");
+		TermReader trd = new TermReader(rd, environment);
+		// TermWriter out = new TermWriter(new OutputStreamWriter(System.out));
+		ReadOptions rd_ops = new ReadOptions(new OperatorSet());
+		// WriteOptions wr_ops = new WriteOptions();
+		gnu.prolog.term.Term goalTerm=null;
+		try {
+			goalTerm = trd.readTermEof(rd_ops);
+		} catch (ParseException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		PrologCode code=null;
+		try {
+			code = environment.getPrologCode(CompoundTermTag.get((CompoundTerm) goalTerm));
+		} catch (PrologException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println(code);
+*/
+/*		
+		Term[] args = { AtomTerm.get("b")};
+		 CompoundTerm goalTerm = new CompoundTerm(AtomTerm.get("a"),null);
+		try {
+			interpreter.runOnce(AtomTerm.get("a(b)."));
+		} catch (PrologException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+	*/	
+		
+
+
 		try {
 			System.out.println("Consulting prolog file for the first time");
 			System.out.println("This will take a while...");
+			jip.consultFile(outputDirPath+"/nodes.pl");
+			jip.consultFile(outputDirPath+"/nextt.pl");
+			jip.consultFile(outputDirPath+"/rest.pl");
 			jip.consultFile(outputDirPath+"/rules.pl");
 //			jip.consultFile(folder+"/facts.pl");
 		} 
@@ -34,9 +130,9 @@ public class Asolver {
 		}
 		System.out.println("DONE");
 		System.out.println();
-		parser = jip.getTermParser();
-		liSTars = new Hashtable<Integer,Astar>(); 	
-		this.nodes=nodes;
+		
+		System.out.println("DONE");
+	
 	}
 	
 	public void solve(){
@@ -44,15 +140,27 @@ public class Asolver {
 		JIPTerm term, termCl;
 		Astar astar;
 		
-		jipQueryCl = jip.openSynchronousQuery(parser.parseTerm("client(X,Y,Xdest,Ydest,Time, Persons, Language, Luggage)."));
+		String q="client(X,Y,Xdest,Ydest,Time, Persons, Language, Luggage).";
+		System.out.println(q);
+	//	jipQuery=jip.getTermParser().parseTerm("?- "+q);
+		jipQueryCl = jip.openSynchronousQuery(parser.parseTerm("?- "+q));
 		termCl = jipQueryCl.nextSolution();
 		if(termCl==null){
 			System.out.println("Can`t find client");
 			System.exit(1);
 		}
+		System.out.println("0");
+		System.out.println(termCl.toString());
+		System.out.println("1");
 		double Xcl=dget(termCl,"X");
 		double Ycl=dget(termCl,"Y");
-		double nidCl=closestNode(Xcl, Ycl);
+		System.out.println("2");
+//		double nidCl=closestNode(Xcl, Ycl);
+		System.out.println("3");
+	//	System.exit(1);
+		
+	//	System.exit(1);
+		
 		jipQuery = jip.openSynchronousQuery(parser.parseTerm("taxi(X,Y,Tid,_,_,_,_,_,_,_,_)."));
 		boolean all=true;
 		for (term = jipQuery.nextSolution(); term != null;term = jipQuery.nextSolution()) {
@@ -103,17 +211,28 @@ public class Asolver {
 		String str=get(term,var);
 		if(!str.contains("E"))
 			return new Long(str);
-		String [] spl=str.split("E");
-		double d=Double.valueOf(spl[0]);
-		int times=Integer.parseInt(spl[1]);
-		return (long) d*times;
-		
+		long val = new BigDecimal(str).longValue();
+		return val;		
 	}
 	
 	public static double dget(JIPTerm term, String var){
 		return Double.valueOf(get(term,var));
 	}
+
+	public static long stol (String str) throws NumberFormatException{
+		str=str.replace(" ", "");
+		if(!str.contains("E")){
+				return Long.parseLong(str);
+		}
+		long val = new BigDecimal(str).longValue();
+		return val;
+	}
 	
+	public static double stod(String str){
+		str=str.replace(" ", "");
+		return Double.valueOf(str);
+	}
+
 	public long closestNode(double x,double y){
 		JIPQuery jipQuery;
 		JIPTerm term;

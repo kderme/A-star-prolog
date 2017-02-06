@@ -2,30 +2,28 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
-
-
 public class PrologParser {
-	private final PrintWriter out_pl;
 	private final Map<String, Integer> aMap;
 	private final String [] known_functors=
 			{"client","taxi","node","line","traffic"};
 	private final int [] numOfTerms=
 			{8,10,5,18,3};
-	private String lastNid;
-	private String lastLid;
+	private String last[]={"","","","",""};
+	private String client[]=null;
+	private static Hashtable<Long,Node> nodes;
+	private boolean cheat=true;
 	
-	public PrologParser(PrintWriter printWriter) {
-		out_pl=printWriter;
+	public PrologParser(Hashtable<Long,Node> nodes) {
 		aMap = new HashMap<String, Integer>();
 		int numero=0;
 		for(String s :known_functors){
 			aMap.put( s, numero++);
 		}
-		lastNid="";
-		lastLid="";
+		this.nodes=nodes;
 	}
 	
 	public int num(String functor){
@@ -103,25 +101,51 @@ public class PrologParser {
 		
 	}
 	
-	public void writePrologFact(String functor, String[] line,boolean checkPrev) {
+	public void writePrologFact(PrintWriter out_pl,PrintWriter out_pl2, String functor, String[] line,boolean checkPrev) {
 		fixFacts(functor, line);
-		String fact=fixTerms(functor, line);
-		if(checkPrev){
-			if(functor.equals("node")){
-				if(line[2].equals(lastLid)){
-					String s="next("+lastNid+","+line[3]+").";
-					out_pl.println(s);
-				}
-				lastNid=line[3];
-				lastLid=line[2];
+		if (functor=="client"){
+			client=line;
+		}
+		String fact;
+		if(functor.equals("node")){
+			if (client==null){
+				System.out.println("Null Client!!");
+				System.exit(1);
 			}
+			ArrayList<String> newline=new ArrayList<String>(Arrays.asList(line));
+			Double dToStart=distance(newline.get(0),newline.get(1),client[0],client[1]);
+			Double dToTarget=distance(newline.get(0),newline.get(1),client[2],client[3]);
+			newline.add(dToStart+"");
+			newline.add(dToTarget+"");
+			line=new String[newline.size()];
+			newline.toArray(line);
+			fact=fixTerms(functor, line);
+			if(checkPrev){
+				if(line[2].equals(last[2])){
+					double dist=distance(last[0],last[1],line[0],line[1]);
+					String s="next("+last[3]+","+line[3]+","+dist+").";
+					out_pl2.println(s);
+					if(false){
+						Node node=nodes.get(new Long(line[3]));
+						node.n.add(new Long(last[3]));
+					}
+				}
+				last=line;
+			}
+		}
+		else{
+			fact=fixTerms(functor, line);
 		}
 		if (fact!="")
 			out_pl.println(functor + fact);
 	}
 	
-	public void destroy(){
-		out_pl.close();
+	
+	private double distance(String x1,String y1,String x2,String y2){
+		double dx=Double.parseDouble(x1)-Double.parseDouble(x2);
+		double dy=Double.parseDouble(y1)-Double.parseDouble(y2);
+		double dist=Math.sqrt(dx*dx+dy*dy);
+		return dist;
 	}
 }
 
