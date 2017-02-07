@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+	<kml xmlns="http://earth.google.com/kml/2.1">
+	<Document>
+		<name>Taxi Routes</name>
+		<Style id="green">
+			<LineStyle>
+				<color>ff009900</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="red">
+			<LineStyle>
+				<color>ff0000ff</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="gray">
+			<LineStyle>
+				<color>ff808080</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="black">
+			<LineStyle>
+				<color>ff000000</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="yellow">
+			<LineStyle>
+				<color>ffffff00</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="maroon">
+			<LineStyle>
+				<color>ff800000</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="aqua">
+			<LineStyle>
+				<color>ff00ffff</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="blue">
+			<LineStyle>
+				<color>ff0000ff</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="fuchsia">
+			<LineStyle>
+				<color>ffff00ff</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+		<Style id="purple">
+			<LineStyle>
+				<color>ff800080</color>
+				<width>4</width>
+			</LineStyle>
+		</Style>
+

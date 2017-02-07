@@ -1,48 +1,50 @@
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 
 
 public class KmlWriter {
-	static String start=
-			  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-			+ "	<kml xmlns=\"http://earth.google.com/kml/2.1\">\n"
-			+ "	<Document>\n"
-			+ "		<name>Taxi Routes</name>\n"
-			+ "		<Style id=\"green\">\n"
-			+ "			<LineStyle>\n"
-			+ "				<color>ff009900</color>\n"
-			+ "				<width>4</width>\n"
-			+ "			</LineStyle>\n"
-			+ "		</Style>\n"
-			+ "		<Style id=\"red\">\n"
-			+ "			<LineStyle>\n"
-			+ "				<color>ff0000ff</color>\n"
-			+ "				<width>4</width>\n"
-			+ "			</LineStyle>\n"
-			+ "		</Style>";
-	
+
 	String Placemark2=
 			  "				</coordinates>\n"
 			+ "			</LineString>\n"
 			+ "		</Placemark>";
-	
-	String end=
-			  "	</Document>\n"
-			+ "</kml>";
-	
-	PrintWriter writer;
-	
-	public KmlWriter(String outputDirPath){
+
+String end=
+		  "	</Document>\n"
+	+ "</kml>";
+
+	static final String [] colors={"green", "gray", "black", "yellow", "maroon", "aqua", "fuchsia", "purple"};
+	static int index=0;
+	static final String main= "red";
+
+PrintWriter writer;
+
+	public KmlWriter(String outputDirPath, String initial){
 		try {
-			this.writer = new PrintWriter(outputDirPath+"/map.kml", "UTF-8");
+			File from = new File(initial);
+			File to = new File(outputDirPath + "/map.kml");
+			Files.copy(from.toPath(), to.toPath());
+			FileWriter fw = new FileWriter(to, true);
+			BufferedWriter bw = new BufferedWriter(fw);
+			this.writer =new PrintWriter(bw);
+//			this.writer = new PrintWriter(outputDirPath+"/map.kml", "UTF-8");
 		} catch (FileNotFoundException | UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
-		writer.println(start);
+			catch (IOException e) {
+				e.printStackTrace();
+		}
+//		writer.println(start);
 	}
 	
-	public void write(Astar astar){
+	public void write(Astar astar, boolean isMain){
+		giveColor(astar,isMain);
 		if(!astar.found)
 			return;
 		writer.println(Placemark(astar));
@@ -54,6 +56,17 @@ public class KmlWriter {
 			throw new UsageException();
 		}
 		*/
+	}
+	
+	static void giveColor(Astar astar, boolean isMain){
+		if (isMain){
+			astar.color=main;
+		}
+		else{
+			astar.color=colors[index];
+			index++;
+			index=index%colors.length;
+		}
 	}
 	
 	public void end(){

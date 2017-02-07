@@ -1,4 +1,3 @@
-
 import java.util.*;
 import java.io.*;
 import java.nio.file.Files;
@@ -22,13 +21,14 @@ public class Main {
 	private static String outputDirPath;
 	private static PrologParser myPrologParser;
 
-	
-	private static int client;
 	private static Hashtable<Long,Node> nodes;
 	 
 	static private PrintWriter pwNodes=null;
 	static private PrintWriter pwNext=null;
 	static private PrintWriter pwRest=null;
+	private static PrintWriter pwLines=null;
+	private static PrintWriter pwTraffic=null;
+	private static ArrayList<Long> arr;
 	
 	private static BufferedReader newBuff(String name)
 			throws UnsupportedEncodingException, FileNotFoundException {
@@ -55,9 +55,9 @@ public class Main {
 		linestr = sc.next();
 		int num=myPrologParser.num("client");
 		line = linestr.split(",",num);
-		myPrologParser.writePrologFact(pwRest,null,"client", line, true);
+		myPrologParser.writePrologFact(pwRest,"client", line);
 		sc.close();
-
+		
 		// TAXIS
 		sc = new Scanner(new File(inputDirPath + "/taxis.csv"));
 		sc.next();
@@ -80,37 +80,22 @@ public class Main {
 			linestr+=linestr2;
 			num=myPrologParser.num("taxi");
 			line = linestr.split(",",num);
-			myPrologParser.writePrologFact(pwRest,null,"taxi", line, true);
+			myPrologParser.writePrologFact(pwRest,"taxi", line);
 		}
 		sc.close();
-
-		// NODES
-		nodes = new Hashtable<Long, Node>();
-		in = newBuff("nodes");
-		linestr = in.readLine();
-		linestr = in.readLine();
-		while (linestr != null) {
-			num=myPrologParser.num("node");
-			line = linestr.split(",",num);
-			long l=new Long(line[3]);
-			if (nodes.get(l)==null){
-				nodes.put(l,new Node(l));
-			}
-			myPrologParser.writePrologFact(pwNodes,pwNext,"node", line, true);
-			linestr = in.readLine();
-		}
-		in.close();
-/*
+		pwRest.close();
+		
 		// LINES
 		in = newBuff("lines");
 		linestr = in.readLine();
 		while (linestr != null) {
 			num=myPrologParser.num("line");
 			line = linestr.split(",",num);
-			myPrologParser.writePrologFact(pwRest,"line", line, true);
+			myPrologParser.writePrologFact(pwLines,"line", line);
 			linestr = in.readLine();
 		}
 		in.close();
+		pwLines.close();
 
 		// TRAFFIC
 		in = newBuff("traffic");
@@ -118,12 +103,41 @@ public class Main {
 		while (linestr != null) {
 			num=myPrologParser.num("traffic");
 			line = linestr.split(",",num);
-			myPrologParser.writePrologFact(pwRest, "traffic", line, true);
+			myPrologParser.writePrologFact(pwTraffic, "traffic", line);
+			linestr = in.readLine();
+		}	
+		in.close();
+		pwTraffic.close();
+		
+		PrologParser.consult(outputDirPath+"/lines.pl");
+//		PrologParser.consult(outputDirPath+"/taxis.pl");
+		
+		// NODES
+		arr=new ArrayList<Long>();
+		nodes = new Hashtable<Long, Node>();
+		myPrologParser.setNodes(nodes);
+		in = newBuff("nodes");
+		linestr = in.readLine();
+		linestr = in.readLine();
+		while (linestr != null) {
+			num=myPrologParser.num("node");
+			line = linestr.split(",",num);
+			long l=new Long(line[3]);
+			
+			if (nodes.get(l)==null){
+				nodes.put(l,new Node(l));
+				arr.add(l);
+			}
+			myPrologParser.writePrologFact(pwNodes,"node", line);
+			if(nodes.get(l).hScore==0.0D){
+				System.out.println(l);
+				System.exit(1);
+			}
 			linestr = in.readLine();
 		}
-	
 		in.close();
-		*/
+		pwNodes.close();
+		pwNext.close();
 	}
 
 	private static void _read_data_() throws UsageException {
@@ -140,7 +154,8 @@ public class Main {
 
 	public static void main(String[] args) {
 //		userdir = System.getProperty("user.dir");
-		System.out.println(new java.io.File("").getAbsolutePath());
+		userdir=new java.io.File("").getAbsolutePath();
+		System.out.println("userdir="+userdir);
 		try {
 			// find i/o paths
 			if (args.length == 0) {
@@ -205,7 +220,16 @@ public class Main {
 				bw = new BufferedWriter(fw);
 				pwRest =new PrintWriter(bw);
 				
-				myPrologParser=new PrologParser(nodes);
+				to = new File(outputDirPath + "/lines.pl");
+				fw = new FileWriter(to, true);
+				bw = new BufferedWriter(fw);
+				pwLines =new PrintWriter(bw);
+				
+				to = new File(outputDirPath + "/traffic.pl");
+				fw = new FileWriter(to, true);
+				bw = new BufferedWriter(fw);
+				pwTraffic =new PrintWriter(bw);
+				myPrologParser=new PrologParser(nodes,pwNext);
 			} catch (IOException e) {
 				e.printStackTrace();
 				throw new UsageException();
@@ -214,18 +238,20 @@ public class Main {
 			System.out
 					.println("################################################");
 			System.out
-					.println("#########   WELCOME TO TARIFAS-APP   ###########");
+					.println("#########   WELCOME TO  E-TARIFAS    ###########");
 			System.out
 					.println("################################################");
 
 			System.out.println("Creating prolog files from data...");
 			_read_data_();
-			pwNodes.close();
-			pwRest.close();
-			pwNext.close();
+			
 			System.out.println("DONE\n");
 			
-			Asolver solver = new Asolver(inputDirPath,outputDirPath,nodes);
+			if(arr==null){
+				System.out.println("arr==null");
+				System.exit(1);
+			}
+			Asolver solver = new Asolver(inputDirPath,outputDirPath,nodes,PrologParser.jip, PrologParser.parser,arr);
 			
 			solver.solve();
 					} 

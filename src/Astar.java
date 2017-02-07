@@ -21,50 +21,78 @@ public class Astar {
 	private HashSet<Node> closedSet;
 	private PriorityQueue<Node> openQ;
 	
+	//statistics
 	public double pathCost;
+	public long hops;
+	public long explored;
+	public long visited;
+	
 	private Long startNid,targetNid;
 	private Node startNode,targetNode;
 	private ArrayList<Pair> path;
 	public boolean found=false;
 	public String color="blue";
 	public String name="";
+	private ArrayList<Long> arr;
+	public Suitability suit;
 	
 	public Astar
 		(double startX, double startY, double targetX, double targetY,
-		JIPEngine jip,JIPTermParser parser,Hashtable<Long,Node> nodes, String name)
+		JIPEngine jip,JIPTermParser parser,Hashtable<Long,Node> nodes, String name, ArrayList<Long> arr)
 	{
 		this.startX=startX; this.startY=startY;
 		this.targetX=targetX; this.targetY=targetY;
 		this.jip=jip; this.parser=parser;
 		this.nodes=nodes;
-		
+		this.arr=arr;
+
 		this.closedSet = new HashSet<Node>();
 		Comparator<Node> comparator = new Node.fComparator();
 		this.openQ = new PriorityQueue<Node>(1,comparator);
 		//this.openQ = new PriorityQueue<Node>(1,new Node.fComparator());
 
 		this.pathCost=0.0D;
-		
-		this.startNid=3936338639L;//closestNode(startX,startY);
+		this.hops=0L;
+		this.explored=0L;
+		this.visited=0L;
+
+		this.startNid=closestNodeJava(startX,startY);	// Pure Prolog:closestNode(startX,startY);//3936338639L
 		this.startNode=nodes.get(startNid);
 		if(startNode==null){
 			System.out.println("No key for "+startNid);
 			System.exit(1);
 		}
-		this.targetNid=2423063624L;//closestNode(targetX,targetY);
+		this.targetNid=closestNodeJava(targetX,targetY);//
 		this.targetNode=nodes.get(targetNid);
 		if(targetNode==null){
 			System.out.println("No key for "+startNid);
 			System.exit(1);
 		}
-			
-		startNode.update(0,0,null);
-		startNode.parent=new Node();
-		startNode.parent.Nid=0L;
+
+		startNode.update(0,null,Double.MAX_VALUE);
+		startNode.parent=null;
+//		startNode.parent.Nid=0L;
 		this.openQ.add(startNode);
 		this.name=name;
+
 	}
 	
+	private Long closestNodeJava(double startX2, double startY2) {
+		double minD=100.0D,	 tempD;
+		long minN=0L,  tempN;
+//		System.out.println((arr).size());
+		for(long a: arr){
+			tempD=PrologParser.distance(startX2+"",startY2+"", nodes.get(a).x+"",nodes.get(a).y+"");
+			tempN=nodes.get(a).Nid;
+			if (tempD<minD){
+				minN=tempN;
+				minD=tempD;
+			}
+		}
+//		System.out.println(minN);
+		return minN;
+	}
+
 	public boolean ASearch(){
 		JIPQuery jipQuery;
 		JIPTerm term1;
@@ -80,13 +108,14 @@ public class Astar {
 			}
 			
 			current = openQ.poll();
-			
-			System.out.println(current.Nid+":("+current.fScore+"="+current.gScore+"+"+current.hScore+"),"+openQ.size()+","+closedSet.size());
+			visited++;
+//			System.out.println(current.Nid+":("+current.fScore+"="+current.gScore+"+"+current.hScore+"),"+openQ.size()+","+closedSet.size());
+/*			
 			if(current.fScore<lastf){
 				System.out.println("current.fScore<lastf");
 				System.exit(1);
 			}
-
+*/
 			closedSet.add(current);
 //			current.print();
 			if(current==targetNode){
@@ -95,9 +124,9 @@ public class Astar {
 				found=true;
 				return true;
 			}
-			String q;
+//			String q;
 			
-			startTime = System.currentTimeMillis();
+//			startTime = System.currentTimeMillis();
 			
 //			q="canGoAll2("+current.Nid+","+current.parent.Nid+","+targetNid+",X,[]),!.";
 /*
@@ -146,6 +175,9 @@ public class Astar {
 			term1=jipQuery.nextSolution();
 			terms.add(term1);
 */
+/*
+ * 		CanGo			
+ *
 			q="can_go("+current.Nid+","+current.parent.Nid+","+targetNid+",N,D,H).";
 			System.out.println(q);
 			jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));
@@ -161,11 +193,12 @@ public class Astar {
 			System.out.println();
 			System.out.println();
 			System.out.println("			time= "+totalTime);
-			
+*		..cango
+*/
 			
 //			System.exit(1);
 
-			for (JIPTerm term: terms) {
+//			for (JIPTerm term: terms) {
 //	old 		for(Edge e : current.adj){
 // findall			for(int i=0; i<res2.length;i++){
 /* findall			String [] res3=res2[i].split("/");
@@ -183,25 +216,31 @@ public class Astar {
 				double hScore=Asolver.stod(res3[2]);
 *	...findall			
 */			
+			for (int i=0; i<current.gt.size();i++){
+				Node neighbor=current.gt.get(i).node;
+				if (neighbor==null){
+//					System.out.println("get("+nid+")=null");
+//					System.out.println("nid="+nid);
+					System.exit(1);
+				}
+//				long nid=neighbor.Nid;
+				double cost=current.gt.get(i).cost;
+/*
+ * Pure Prolog
+ * 				
 				long nid=Asolver.lget(term, "N");
 				double distance= Asolver.dget(term,"D");
 				double hScore=Asolver.dget(term,"H");
-				Node neighbor=nodes.get(nid);
-				if (neighbor==null){
-					System.out.println("get("+nid+")=null");
-					System.out.println("nid="+nid);
-					System.exit(1);
-				}
-				else{
-//					System.out.println("->"+nid);
-				}
+*/				
+
 				if (closedSet.contains(neighbor))
 					/*	IGNORE CLOSED CASES		*/
 					continue;
-				double gScore = current.gScore + distance;
+				double gScore = current.gScore + cost;
 				if(!openQ.contains(neighbor)){
-					neighbor.update(gScore,hScore,current);
+					neighbor.update(gScore,current,cost);
 					openQ.add(neighbor);
+					explored++;
 					continue;
 				}
 				else if (gScore >= neighbor.gScore)
@@ -209,7 +248,7 @@ public class Astar {
 					continue;
 				/*	IS DISCOVERED AND WE FOUND STH BETTER	*/
 				openQ.remove(neighbor);
-				neighbor.update(gScore,hScore,current);
+				neighbor.update(gScore,current,cost);
 				openQ.add(neighbor);
 			}
 		}
@@ -219,25 +258,30 @@ public class Astar {
 	
 	public void printPath(PrintWriter writer){
 		for (Pair p:path){
-			writer.println("					"+p.left+"	"+p.right);
+			writer.println("					"+p.left+","+p.right+",0");
 		}
 	}
 	
 	public void createPath(){
 		JIPQuery jipQuery;
-		JIPTerm term;
-		
+		JIPTerm term;	
 		path=new ArrayList<Pair>();
 		path.add(new Pair(Double.toString(targetX),Double.toString(targetY)));
-		for (Node n=targetNode; n!=startNode;n=n.parent){
-			String q="node(X,Y,"+n.Nid+",_,_),!.";
+		for (Node n=targetNode; n!=startNode;n=n.parent.node){
+			hops++;
+/*			
+			String q="node(X,Y,_,"+n.Nid+",_,_,_),!.";
 			jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));
-			if ((term = jipQuery.nextSolution())!=null){
+			if ((term = jipQuery.nextSolution())!=null){		
 				String X=Asolver.get(term,"X");
 				String Y=Asolver.get(term,"Y");
-				path.add(new Pair(X,Y));
-			}
+*/
+			String X=n.x+"";
+			String Y=n.y+"";
+			pathCost+=n.parent.cost;
+			path.add(new Pair(X,Y));
 		}
+		
 		path.add(new Pair(Double.toString(startX),Double.toString(startY)));
 		Collections.reverse(path);
 	}
@@ -254,6 +298,7 @@ public class Astar {
 		Collections.reverse(path);
 	}
 */
+		
 	
 	private long closestNode(double x,double y){
 		JIPQuery jipQuery;

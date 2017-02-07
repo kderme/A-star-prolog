@@ -14,6 +14,9 @@ import gnu.prolog.vm.PrologException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Hashtable;
 
 import jpl.Atom;
@@ -37,42 +40,41 @@ public class Asolver {
 	JIPEngine jip;
 	JIPTermParser parser;
 	
-	Hashtable<Integer,Astar> liSTars;
+	ArrayList<Suitability> listSuit;
 	Hashtable<Long,Node> nodes;
+	private ArrayList<Long> arr;
 	
 	String inputDirPath;
 	String outputDirPath;
-	
-	public Asolver(String inputDirPath,String outputDirPath,Hashtable<Long,Node> nodes) {
-		/* Query q1 =
+
+	public Asolver(String inputDirPath,String outputDirPath,Hashtable<Long,Node> nodes,JIPEngine jip, JIPTermParser parser,ArrayList<Long> arr) {
+		/*
+		 *		Tried jpl (swi-prolog for java)
+		 *  	(failed)
+		 *  
+		 *  Query q1 =
 			    new Query(
 			        "consult",
 			        new Term[] {new Atom(outputDirPath+"/rules.pl")}
 			    );	*/
-		liSTars = new Hashtable<Integer,Astar>();
+		listSuit = new ArrayList<Suitability>();
+		this.arr=arr;
 		this.nodes=nodes;
-		jip = new JIPEngine();
-		parser = jip.getTermParser();
 		this.inputDirPath=inputDirPath;
 		this.outputDirPath=outputDirPath;
-		System.out.println(System.getProperty("java.library.path"));
-/*
-		String t0 = "consult('test.pl')";
-		if (!Query.hasSolution(t0)) {
-			System.out.println(t0 + " failed");
-			System.exit(1);
-		}
-*/		
-
-
+		this.jip=jip;
+		this.parser=parser;
+		/*
+		 * 		Tried Gnu-prolog for java			
+		 *		(failed)
+		 *
 		Environment environment=new Environment();
+
 		System.out.println("Consulting prolog file for the first time");
 		environment.ensureLoaded(AtomTerm.get("common-files/rules2.pl"));
 		
 		System.out.println("DONE");
-//		environment.ensureLoaded(AtomTerm.get(outputDirPath+"/rules.pl"));
-		//get(Type);
-/*		
+ 
 		Interpreter interpreter;
 		interpreter = environment.createInterpreter();
 		environment.runInitialization(interpreter);
@@ -91,48 +93,43 @@ public class Asolver {
 		try {
 			goalTerm = trd.readTermEof(rd_ops);
 		} catch (ParseException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		PrologCode code=null;
 		try {
 			code = environment.getPrologCode(CompoundTermTag.get((CompoundTerm) goalTerm));
 		} catch (PrologException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		System.out.println(code);
-*/
-/*		
+
+		
 		Term[] args = { AtomTerm.get("b")};
 		 CompoundTerm goalTerm = new CompoundTerm(AtomTerm.get("a"),null);
 		try {
 			interpreter.runOnce(AtomTerm.get("a(b)."));
 		} catch (PrologException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
 	*/	
 		
-
-
 		try {
 			System.out.println("Consulting prolog file for the first time");
 			System.out.println("This will take a while...");
-			jip.consultFile(outputDirPath+"/nodes.pl");
-			jip.consultFile(outputDirPath+"/nextt.pl");
-			jip.consultFile(outputDirPath+"/rest.pl");
+			
 			jip.consultFile(outputDirPath+"/rules.pl");
-//			jip.consultFile(folder+"/facts.pl");
+			
+//			jip.consultFile(outputDirPath+"/nodes.pl");
+/*				
+			jip.consultFile(outputDirPath+"/nextt.pl");
+*/			
+			jip.consultFile(outputDirPath+"/rest.pl");
+	
 		} 
 		catch (JIPSyntaxErrorException | IOException e) {
 			e.printStackTrace();
 		}
 		System.out.println("DONE");
-		System.out.println();
-		
-		System.out.println("DONE");
-	
 	}
 	
 	public void solve(){
@@ -143,61 +140,124 @@ public class Asolver {
 		String q="client(X,Y,Xdest,Ydest,Time, Persons, Language, Luggage).";
 		System.out.println(q);
 	//	jipQuery=jip.getTermParser().parseTerm("?- "+q);
-		jipQueryCl = jip.openSynchronousQuery(parser.parseTerm("?- "+q));
+		jipQueryCl = jip.openSynchronousQuery(parser.parseTerm(q));
 		termCl = jipQueryCl.nextSolution();
 		if(termCl==null){
 			System.out.println("Can`t find client");
 			System.exit(1);
 		}
-		System.out.println("0");
 		System.out.println(termCl.toString());
-		System.out.println("1");
+		
 		double Xcl=dget(termCl,"X");
 		double Ycl=dget(termCl,"Y");
-		System.out.println("2");
-//		double nidCl=closestNode(Xcl, Ycl);
-		System.out.println("3");
-	//	System.exit(1);
+
+//		double nidCl=closestNodeOld(Xcl, Ycl);
 		
-	//	System.exit(1);
-		
-		jipQuery = jip.openSynchronousQuery(parser.parseTerm("taxi(X,Y,Tid,_,_,_,_,_,_,_,_)."));
+		jipQuery = jip.openSynchronousQuery(parser.parseTerm("taxi(X,Y,Tid,Available,From,To,Languages,Rating,Long_distance,Type,_)"));
 		boolean all=true;
+		KmlWriter kml = new KmlWriter(outputDirPath, "common-files/map.kml");
 		for (term = jipQuery.nextSolution(); term != null;term = jipQuery.nextSolution()) {
 			int Tid=iget(term,"Tid");
 			double X=dget(term,"X");
 			double Y=dget(term,"Y");
-			astar=new Astar(X,Y,Xcl,Ycl,jip, parser, nodes,"Taxi "+Tid);
+			if(arr==null){
+				System.out.println("arr==null");
+				System.exit(1);
+			}
+			astar=new Astar(X,Y,Xcl,Ycl,jip, parser, nodes,"Taxi "+Tid,arr);
 			System.out.println("Searching path for Taxi "+Tid+"...");
 			if(!astar.ASearch()){
 				System.out.println("Search failed for taxi "+Tid);
-				System.exit(0);
 				all=false;
 				continue;
 			}
 			System.out.println("Creating path for Taxi "+Tid+"...");
 			astar.createPath();
 			System.out.println("OK");
-			System.out.println("Path length: "+astar.pathCost);
-			liSTars.put(Tid,astar);
+			System.out.println("Path Cost = "+astar.pathCost);
+			System.out.println("  (hops="+astar.hops+",explored="+astar.explored+",visited="+astar.visited+")");
+			Suitability suit=new Suitability(jip, term, termCl, astar,Tid);
+			suit.solve();
+			listSuit.add(suit);
 //			System.out.println("Path length "+astar.path_length);
-			KmlWriter kml = new KmlWriter(outputDirPath);
-			kml.write(astar);
+			System.out.println();
+		}
+		double Xdest=dget(termCl,"Xdest");
+		double Ydest=dget(termCl,"Ydest");
+		updateH(Xdest,Ydest);
+		
+		astar=new Astar(Xcl,Ycl,Xdest,Ydest,jip, parser, nodes, "Client",arr);
+		if(!astar.ASearch()){
+			System.out.println("Search Failed for your dest");
 			kml.end();
 			System.exit(0);
 		}
-		int Xdest=iget(termCl,"Xdest");
-		int Ydest=iget(termCl,"Ydest");
-		astar=new Astar(Xcl,Ycl,Xdest,Ydest,jip, parser, nodes, "Client");
-		if(!astar.ASearch()){
-			System.out.println("Search Failed for your dest");
-			System.exit(0);
-		}
+		System.out.println("Creating path for Destination...");
 		astar.createPath();
+		kml.write(astar,true);
+		System.out.println("OK");
+		System.out.println("Path Cost = "+astar.pathCost);
+		System.out.println("  (hops="+astar.hops+",explored="+astar.explored+",visited="+astar.visited+")");
+		System.out.println();
 		
+		System.out.println("#################   RESULTS     ################");
+		System.out.println();
+		System.out.println("#####RATINGS#####");
+		Comparator<Suitability> comparator = new Suitability.rComparator();
+		Collections.sort(listSuit, comparator);
+		int i=0;
+		for (Suitability s:listSuit){
+			i++;
+			s.rsay();
+			if(i==5)
+				break;
+		}
+	
+		System.out.println();
+		System.out.println("#####SUITABILITY#####");
+		 comparator = new Suitability.dComparator();
+		Collections.sort(listSuit, comparator);
+		Suitability bestSuit=listSuit.get(0);
+		double bestDist=bestSuit.astar.pathCost;
+		
+		for (Suitability s: listSuit){
+			s.distSuitability = 5.0*bestDist/s.astar.pathCost;
+			s.suitability+=s.distSuitability;
+		}
+		
+		comparator = new Suitability.sComparator();
+		Collections.sort(listSuit, comparator);
+		
+		i=0;
+		for (Suitability s:listSuit){
+			i++;
+			s.ssay();
+			if(i==5)
+				break;
+		}
+		
+		for(Suitability s:listSuit){
+			if (s.suitable)
+				kml.write(s.astar,false);
+		}
+		
+		
+		kml.end();
+		System.exit(1);
 		//KmlWriter kml = new KmlWriter(outputDirPath);
 	}
 	
+	private void updateH(double xdest,double ydest) {
+		for(long a:arr){
+			Node n=nodes.get(a);
+			n.hScore=PrologParser.distance(n.x+"", n.y+"",xdest+"",ydest+"");
+			n.parent=null;
+			n.gScore=0.0;
+			n.fScore=0.0;
+		}
+		
+	}
+
 	public static String get(JIPTerm term, String var){
 		String str=term.getVariablesTable().get(var).toString();
 		return str;
@@ -212,7 +272,7 @@ public class Asolver {
 		if(!str.contains("E"))
 			return new Long(str);
 		long val = new BigDecimal(str).longValue();
-		return val;		
+		return val;
 	}
 	
 	public static double dget(JIPTerm term, String var){
@@ -233,25 +293,10 @@ public class Asolver {
 		return Double.valueOf(str);
 	}
 
-	public long closestNode(double x,double y){
-		JIPQuery jipQuery;
-		JIPTerm term;
-
-		String q="findClosestNode("+x+","+y+",N,D).";
-		double minD=100.0D,	 tempD;
-		long minN=0L,  tempN;
-		jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));
-		for(term = jipQuery.nextSolution(); term!=null;term = jipQuery.nextSolution()){
-			tempD=Asolver.dget(term,"D");
-			tempN=Asolver.lget(term,"N");
-			if (tempD<minD){
-				minN=tempN;
-			}
-		}
-		return minN;
+	public static long getTime(String str){
+		String str1= (str+".0").replace(":", "").replace("'","");
+		return new BigDecimal(str1).longValue();
 	}
-
-
 
 	public double closestNodeOld(double x,double y){
 		JIPQuery jipQuery;
