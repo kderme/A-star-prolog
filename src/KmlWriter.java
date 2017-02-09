@@ -22,6 +22,7 @@ String end=
 	static final String [] colors={"green", "gray", "black", "yellow", "maroon", "aqua", "fuchsia", "purple"};
 	static int index=0;
 	static final String main= "red";
+	int a;
 
 PrintWriter writer;
 

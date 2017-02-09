@@ -7,69 +7,34 @@
 %line(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_).
 %traffic(_,_,_).
 
+% We precompute the cost of each hop (by consulting lines.pl while writing nextt.pl)
+% Same way we have excluded one-way or footways from nextt.pl
+% We also precompute the heuristic function of each node, so that its ready when needed.
+% This saves much time making our querries much faster
+% If we want this querry to do everything we should use canMoveFromSlow but that`s too slow
+
+canMoveFrom(From,Np,To,D):-
+	next(From,To,D),
+	Np =\= To.
+
+% find all solution at once
+canMoveAll(From,Np,_,X,_):-
+	findall(	To/D/H,	canMoveFromSlow(From,Np,To,D,H),	X).
+
 onenode(X,Y,Lid,Nid,_,H1,H2):-
 	node(X,Y,Lid,Nid,_,H1,H2),!.
 
-canGoAll(Nid1,Np,_,X,_):-
-	findall(	Nid2/D/H,	can_go(Nid1,_,Np,Nid2,D,H),	X).
-%	modify(X,Nss,Dss,Hss).
-
-
-can_go(Nid1,_,Nidp,Nid2,D,H):-
-	allown(Nid1,Nid2,D),
-	Nidp =\= Nid2,
-	onenode(_,_,_,Nid2,_,H,_).
-%	\+ Nid1=Nid2,
-%	euclDistance(X1,Y1,X2,Y2,D),
-%	distance(Nid1,Nid2,L,D1,D),
-%	hscore(X2,Y2,Nid2,L,Ntarg,H).
-
-
-%modify([],[],[],[]):-
-%modify([(N,D,H)|Xs],[N|Ns],[D|Ds],[H|Hs]):-
-%	modify(Xs,Ns,Ds,Hs).
+canMoveFromSlow(From,Np,To,D,H):-
+	next(From,To,D),
+	Np =\= To,
+	onenode(_,_,_,To,_,H,_).
 	
 
-canGoAll2(Nid1,Nidp,Ntarg,Xss,FoundN):-
-( can_go1(Nid1,Nidp,Ntarg,N,D,H,FoundN)->
-(
-  canGoAll2(Nid1,Nidp,Ntarg,Xs,[N|FoundN]),
-  Xss=[N/D/H|Xs]
-)
-  ;
-  Xss=[]
-).
-
-can_go2(Nid1,_,Nid2,D,H,FoundN):-
-  allown(Nid1,Nid2,D),
-  \+ member(Nid2,FoundN),
-  onenode(_,_,_,Nid2,_,H,_).
-
-canGoAll1(Nid1,Ntarg,Nss,Dss,Hss,FoundN):-
-( can_go1(Nid1,Ntarg,N,D,H,FoundN)->
-(
-% canGoAll1(Nid1,Ntarg,Ns,Hs,Ds,[N|FoundN]),
-  Ns=[], Ds=[], Hs=[],
-  Nss=[N|Ns],Dss=[D|Ds],Hss=[H|Hs]
-)
-  ;
-  Nss=[], Dss=[], Hss=[]
-).
-
-can_go1(Nid1,Nidp,_,Nid2,D,H,FoundN):-
-  allown(Nid1,Nid2,D),
-  Nidp =\= Nid2,
-  \+ member(Nid2,FoundN),
-  onenode(_,_,_,Nid2,_,H,_).
-
-
-allown(Nid1,Nid2,D):-
+allown(Nid1,Nid2,D,Np):-
 	(
-	next(Nid1,Nid2,D);	next(Nid2,Nid1,D)
+	next(Nid1,Nid2,D),
+	Np =\= Nid2
 	).
-
-
-% distance(_,_,_,D,D).
 
 hscore(X2,Y2,_,_,Ntarg,H):-
 %	node(Xtarg,Ytarg,L,_,_),

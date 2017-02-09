@@ -46,8 +46,9 @@ public class Asolver {
 	
 	String inputDirPath;
 	String outputDirPath;
-
-	public Asolver(String inputDirPath,String outputDirPath,Hashtable<Long,Node> nodes,JIPEngine jip, JIPTermParser parser,ArrayList<Long> arr) {
+	int algorithm;
+	
+	public Asolver(String inputDirPath,String outputDirPath,Hashtable<Long,Node> nodes,JIPEngine jip, JIPTermParser parser,ArrayList<Long> arr, int algorithm) {
 		/*
 		 *		Tried jpl (swi-prolog for java)
 		 *  	(failed)
@@ -64,9 +65,10 @@ public class Asolver {
 		this.outputDirPath=outputDirPath;
 		this.jip=jip;
 		this.parser=parser;
+		this.algorithm=algorithm;
 		/*
 		 * 		Tried Gnu-prolog for java			
-		 *		(failed)
+		 *		(failed-it would never stop compiling)
 		 *
 		Environment environment=new Environment();
 
@@ -119,10 +121,10 @@ public class Asolver {
 			
 			jip.consultFile(outputDirPath+"/rules.pl");
 			
-//			jip.consultFile(outputDirPath+"/nodes.pl");
-/*				
+			jip.consultFile(outputDirPath+"/nodes.pl");
+				
 			jip.consultFile(outputDirPath+"/nextt.pl");
-*/			
+			
 			jip.consultFile(outputDirPath+"/rest.pl");
 	
 		} 
@@ -138,8 +140,8 @@ public class Asolver {
 		Astar astar;
 		
 		String q="client(X,Y,Xdest,Ydest,Time, Persons, Language, Luggage).";
-		System.out.println(q);
-	//	jipQuery=jip.getTermParser().parseTerm("?- "+q);
+//		System.out.println(q);
+//		jipQuery=jip.getTermParser().parseTerm("?- "+q);
 		jipQueryCl = jip.openSynchronousQuery(parser.parseTerm(q));
 		termCl = jipQueryCl.nextSolution();
 		if(termCl==null){
@@ -148,15 +150,18 @@ public class Asolver {
 		}
 		System.out.println(termCl.toString());
 		
+		// get coordinations of client
 		double Xcl=dget(termCl,"X");
 		double Ycl=dget(termCl,"Y");
 
-//		double nidCl=closestNodeOld(Xcl, Ycl);
-		
 		jipQuery = jip.openSynchronousQuery(parser.parseTerm("taxi(X,Y,Tid,Available,From,To,Languages,Rating,Long_distance,Type,_)"));
 		boolean all=true;
+		
 		KmlWriter kml = new KmlWriter(outputDirPath, "common-files/map.kml");
+		
+		System.out.println();
 		for (term = jipQuery.nextSolution(); term != null;term = jipQuery.nextSolution()) {
+			//for every taxi
 			int Tid=iget(term,"Tid");
 			double X=dget(term,"X");
 			double Y=dget(term,"Y");
@@ -166,7 +171,7 @@ public class Asolver {
 			}
 			astar=new Astar(X,Y,Xcl,Ycl,jip, parser, nodes,"Taxi "+Tid,arr);
 			System.out.println("Searching path for Taxi "+Tid+"...");
-			if(!astar.ASearch()){
+			if(!astar.ASearch(algorithm)){
 				System.out.println("Search failed for taxi "+Tid);
 				all=false;
 				continue;
@@ -187,7 +192,7 @@ public class Asolver {
 		updateH(Xdest,Ydest);
 		
 		astar=new Astar(Xcl,Ycl,Xdest,Ydest,jip, parser, nodes, "Client",arr);
-		if(!astar.ASearch()){
+		if(!astar.ASearch(algorithm)){
 			System.out.println("Search Failed for your dest");
 			kml.end();
 			System.exit(0);
@@ -215,7 +220,7 @@ public class Asolver {
 	
 		System.out.println();
 		System.out.println("#####SUITABILITY#####");
-		 comparator = new Suitability.dComparator();
+		comparator = new Suitability.dComparator();
 		Collections.sort(listSuit, comparator);
 		Suitability bestSuit=listSuit.get(0);
 		double bestDist=bestSuit.astar.pathCost;
@@ -235,16 +240,13 @@ public class Asolver {
 			if(i==5)
 				break;
 		}
-		
 		for(Suitability s:listSuit){
 			if (s.suitable)
 				kml.write(s.astar,false);
 		}
 		
-		
 		kml.end();
-		System.exit(1);
-		//KmlWriter kml = new KmlWriter(outputDirPath);
+		System.exit(0);
 	}
 	
 	private void updateH(double xdest,double ydest) {

@@ -10,6 +10,7 @@ public class Node {
 	public double fScore;
 	public Goto parent;
 	
+	//THIS IS ONLY USED WHEN USING -a 1  FLAG. REPRESENTS EDGES
 	public ArrayList<Goto> gt;
 	
 	Node(){

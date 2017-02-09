@@ -76,27 +76,150 @@ public class Astar {
 		this.name=name;
 
 	}
-	
-	private Long closestNodeJava(double startX2, double startY2) {
-		double minD=100.0D,	 tempD;
-		long minN=0L,  tempN;
-//		System.out.println((arr).size());
-		for(long a: arr){
-			tempD=PrologParser.distance(startX2+"",startY2+"", nodes.get(a).x+"",nodes.get(a).y+"");
-			tempN=nodes.get(a).Nid;
-			if (tempD<minD){
-				minN=tempN;
-				minD=tempD;
-			}
-		}
-//		System.out.println(minN);
-		return minN;
-	}
 
-	public boolean ASearch(){
+	/*50-50 functionality between java and prolog */
+	public boolean ASearch0(){
 		JIPQuery jipQuery;
 		JIPTerm term1;
 		ArrayList<JIPTerm> terms;
+		double lastf=0.0;
+		Node current=null;
+		long endTime;
+		long startTime=System.currentTimeMillis();;
+		long totalTime;
+		while(!openQ.isEmpty()){
+			if (current!=null){
+				lastf=current.fScore;
+			}
+			current = openQ.poll();
+			visited++;
+/*
+ *			This must always happen when h is monotonic. 			
+ *			But here it`s not
+			if(current.fScore<lastf){
+				System.out.println("current.fScore<lastf");
+				System.exit(1);
+			}
+*/			
+			closedSet.add(current);
+			if(current==targetNode){
+				/*	TARGET FOUND	*/
+				endTime = System.currentTimeMillis();
+				totalTime = endTime - startTime;
+				System.out.println("time= "+totalTime);
+				found=true;
+				return true;
+			}
+	
+			String q;
+			
+			//we also give its parent not to go back (so we save some time)
+			long pNid=(current.parent==null)?0L:current.parent.node.Nid;
+			q="canMoveFrom("+current.Nid+","+pNid+",N,D).";
+//			System.out.println(q);
+			jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));
+			
+			//add all terms-solutions at one ArrayList
+			terms=new ArrayList<JIPTerm>();
+			for (;  (term1 = jipQuery.nextSolution()) != null;  terms.add(term1) )
+				;
+
+			for (JIPTerm term: terms) {
+				long nid=Asolver.lget(term, "N");
+				double cost= Asolver.dget(term,"D");
+				Node neighbor=nodes.get(nid);
+				if (neighbor==null){
+					//this should throw an exception
+					found=false;
+					return false;
+				}
+				if (closedSet.contains(neighbor))
+					/*	IGNORE CLOSED CASES		*/
+					continue;
+				double gScore = current.gScore + cost;
+				if(!openQ.contains(neighbor)){
+					neighbor.update(gScore,current,cost);
+					openQ.add(neighbor);
+					explored++;
+					continue;
+				}
+				else if (gScore >= neighbor.gScore)
+					/*	IS DISCOVERED AND WE FOUND STH WORSE	*/
+					continue;
+				/*	IS DISCOVERED AND WE FOUND STH BETTER	*/
+				openQ.remove(neighbor);
+				neighbor.update(gScore,current,cost);
+				openQ.add(neighbor);
+			}
+		}
+		endTime = System.currentTimeMillis();
+		totalTime = endTime - startTime;
+		System.out.println("			time= "+totalTime);
+		found=false;
+		return found;
+		
+	}	
+	
+	//Big functionlity to java		
+	public boolean ASearch1(){
+		double lastf=0.0;
+		Node current=null;
+		while(!openQ.isEmpty()){
+			if (current!=null){
+				lastf=current.fScore;
+			}
+			current = openQ.poll();
+			visited++;
+/*
+ *			This must always happen when h is monotonic. 			
+ *			But here it`s not
+			if(current.fScore<lastf){
+				System.out.println("current.fScore<lastf");
+				System.exit(1);
+			}
+*/			
+			closedSet.add(current);
+			if(current==targetNode){
+				/*	TARGET FOUND	*/
+				found=true;
+				return true;
+			}
+			for (int i=0; i<current.gt.size();i++){
+				Node neighbor=current.gt.get(i).node;
+				if (neighbor==null){
+					//this should throw an exception
+					found=false;
+					return false;
+				}
+				double cost=current.gt.get(i).cost;
+				if (closedSet.contains(neighbor))
+					/*	IGNORE CLOSED CASES		*/
+					continue;
+				double gScore = current.gScore + cost;
+				if(!openQ.contains(neighbor)){
+					neighbor.update(gScore,current,cost);
+					openQ.add(neighbor);
+					explored++;
+					continue;
+				}
+				else if (gScore >= neighbor.gScore)
+					/*	IS DISCOVERED AND WE FOUND STH WORSE	*/
+					continue;
+				/*	IS DISCOVERED AND WE FOUND STH BETTER	*/
+				openQ.remove(neighbor);
+				neighbor.update(gScore,current,cost);
+				openQ.add(neighbor);
+			}
+		}
+		found=false;
+		return found;
+		
+	}
+
+	//Big functionlity to prolog
+	public boolean ASearch2(){
+		JIPQuery jipQuery;
+		JIPTerm term1;
 		double lastf=0.0;
 		Node current=null;
 		long endTime = System.currentTimeMillis();
@@ -110,31 +233,24 @@ public class Astar {
 			current = openQ.poll();
 			visited++;
 //			System.out.println(current.Nid+":("+current.fScore+"="+current.gScore+"+"+current.hScore+"),"+openQ.size()+","+closedSet.size());
-/*			
+/*
+ *			This must always happen when h is monotonic. 			
+ *			But here it`s not
 			if(current.fScore<lastf){
 				System.out.println("current.fScore<lastf");
 				System.exit(1);
 			}
-*/
+*/			
 			closedSet.add(current);
-//			current.print();
 			if(current==targetNode){
 				/*	TARGET FOUND	*/
-				//targetNode.parent=current;
 				found=true;
 				return true;
 			}
-//			String q;
-			
-//			startTime = System.currentTimeMillis();
-			
-//			q="canGoAll2("+current.Nid+","+current.parent.Nid+","+targetNid+",X,[]),!.";
-/*
- * 			findall  method			
- *
-			q="canGoAll("+current.Nid+","+current.parent.Nid+","+targetNid+",X,[]),!.";			
-			//q="canGoAll("+current.Nid+","+targetNid+",X),!.";
-			System.out.println(q);
+			startTime = System.currentTimeMillis();
+			String q;
+q="canMoveAll("+current.Nid+","+current.parent.node.Nid+","+targetNid+",X,[]),!.";			
+//			System.out.println(q);
 			jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));			
 			term1=jipQuery.nextSolution();
 			if(term1==null){
@@ -149,59 +265,9 @@ public class Astar {
 			}
 			System.out.println(res1);
 			String [] res2=res1.split(",");
-		*
-		 * ... findall method	
-		 */
-			
-//			res2[res2.length-1]=res2[res2.length-1].split("]")[0];			
-			
-/*
-			System.out.println(Asolver.listget(term1,"Nss"));
-			System.out.println(Asolver.get(term1,"Dss"));
-			System.out.println(Asolver.get(term1,"Hss"));
-			q="can_go1("+current.Nid+","+targetNid+",N,D,H,[]),!.";
-			System.out.println(q);
-			jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));
-			terms=new ArrayList<JIPTerm>();
-			term1=jipQuery.nextSolution();
-			terms.add(term1);
-			/*
-			for (;  (term1 = jipQuery.nextSolution()) != null;  terms.add(term1) )
-				;
-			long nid2=Asolver.lget(term1, "N");
-			term1=jipQuery.nextSolution();
-			q="can_go1("+current.Nid+","+targetNid+",N,D,H,["+nid2+"]),!.";
-			jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));
-			term1=jipQuery.nextSolution();
-			terms.add(term1);
-*/
-/*
- * 		CanGo			
- *
-			q="can_go("+current.Nid+","+current.parent.Nid+","+targetNid+",N,D,H).";
-			System.out.println(q);
-			jipQuery=jip.openSynchronousQuery(parser.parseTerm(q));
-			terms=new ArrayList<JIPTerm>();
-			term1=jipQuery.nextSolution();
-			terms.add(term1);
-			
-			for (;  (term1 = jipQuery.nextSolution()) != null;  terms.add(term1) )
-				;
-			endTime = System.currentTimeMillis();
-			totalTime = endTime - startTime;
-			System.out.println();
-			System.out.println();
-			System.out.println();
-			System.out.println("			time= "+totalTime);
-*		..cango
-*/
-			
-//			System.exit(1);
-
-//			for (JIPTerm term: terms) {
-//	old 		for(Edge e : current.adj){
-// findall			for(int i=0; i<res2.length;i++){
-/* findall			String [] res3=res2[i].split("/");
+		for(int i=0; i<res2.length;i++){
+		//for all neighbors
+			String [] res3=res2[i].split("/");
 				long nid=0L;
 				try{
 					nid=Asolver.stol(res3[0]);
@@ -211,28 +277,16 @@ public class Astar {
 					System.out.println("res="+res);
 					System.out.println("res1="+res1);
 					System.out.println("res2["+i+"]="+res2[2]);
+					found=false;
+					return false;
 				}
 				double distance= Asolver.stod(res3[1]);
 				double hScore=Asolver.stod(res3[2]);
-*	...findall			
-*/			
-			for (int i=0; i<current.gt.size();i++){
-				Node neighbor=current.gt.get(i).node;
+				Node neighbor=nodes.get(nid);
 				if (neighbor==null){
-//					System.out.println("get("+nid+")=null");
-//					System.out.println("nid="+nid);
 					System.exit(1);
 				}
-//				long nid=neighbor.Nid;
-				double cost=current.gt.get(i).cost;
-/*
- * Pure Prolog
- * 				
-				long nid=Asolver.lget(term, "N");
-				double distance= Asolver.dget(term,"D");
-				double hScore=Asolver.dget(term,"H");
-*/				
-
+				double cost=distance;
 				if (closedSet.contains(neighbor))
 					/*	IGNORE CLOSED CASES		*/
 					continue;
@@ -332,5 +386,33 @@ public class Astar {
 		    this.left = left;
 		    this.right = right;
 		  }
+	}
+
+	private Long closestNodeJava(double startX2, double startY2) {
+		double minD=100.0D,	 tempD;
+		long minN=0L,  tempN;
+		for(long a: arr){
+			tempD=PrologParser.distance(startX2+"",startY2+"", nodes.get(a).x+"",nodes.get(a).y+"");
+			tempN=nodes.get(a).Nid;
+			if (tempD<minD){
+				minN=tempN;
+				minD=tempD;
+			}
+		}
+		return minN;
+	}
+
+	public boolean ASearch(int algorithm) {
+		boolean ret;
+		switch (algorithm){
+		case 0: ret=ASearch0();
+				break;
+		case 1: ret=ASearch1();
+				break;
+		case 2: ret=ASearch2();
+				break;
+		default: ret=false;
+		}
+		return ret;
 	}
 }

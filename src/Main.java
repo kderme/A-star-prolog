@@ -8,10 +8,12 @@ class UsageException extends Exception {
 
 	public UsageException() {
 		super(
-				"UsageException:\nUsage: java Main [path to input folder]\n"
-						+ " If path is not defined ./input1 is the default input folder\n"
+				"UsageException:\nUsage: java Main [options]"
+						+ "-a algorithm Defaults to 0"
+						+ "-i inputDirPath Defaults to ./input1"
+						+ "-o outputDirPath Defaults to output1. Must have write priviledges here\n\n"
 						+ " Input folder should have:\n  client.csv\n  nodes.csv\n  taxis.csv\n  lines.csv\n  traffic.csv\n"
-						+ " program must have write priviledge at rundir\n");
+						+ " ./common files should have: all prolog files");
 	}
 }
 
@@ -19,6 +21,7 @@ public class Main {
 	private static String userdir;
 	private static String inputDirPath;
 	private static String outputDirPath;
+	private static int algorithm;
 	private static PrologParser myPrologParser;
 
 	private static Hashtable<Long,Node> nodes;
@@ -156,17 +159,25 @@ public class Main {
 //		userdir = System.getProperty("user.dir");
 		userdir=new java.io.File("").getAbsolutePath();
 		System.out.println("userdir="+userdir);
+		inputDirPath = userdir+"/input1";
+		outputDirPath = userdir+"/output1";
+		algorithm=0;
 		try {
 			// find i/o paths
-			if (args.length == 0) {
-				inputDirPath = "./input1";
-				outputDirPath = "./output1";
-			} else if (args.length == 1) {
-				if (args[0].equals("-help") || args[0].equals("--help"))
+			if (args.length == 0) {} 
+			else if (args.length == 2 || args.length == 4 || args.length == 6) {
+				for (int i=0; i<args.length; i+=2){	
+				if (args[i].equals("-a"))
+					algorithm=Integer.parseInt(args[i+1]);
+				else if (args[i].equals("-i"))
+					inputDirPath=args[i+1];
+				else if (args[i].equals("-0"))
+					outputDirPath=args[i+1];
+				else
 					throw new UsageException();
-				inputDirPath = args[0];
-				outputDirPath = args[0];
-			} else
+				}
+			}
+			else
 				throw new UsageException();
 
 			// create outputs folder
@@ -251,7 +262,7 @@ public class Main {
 				System.out.println("arr==null");
 				System.exit(1);
 			}
-			Asolver solver = new Asolver(inputDirPath,outputDirPath,nodes,PrologParser.jip, PrologParser.parser,arr);
+			Asolver solver = new Asolver(inputDirPath,outputDirPath,nodes,PrologParser.jip, PrologParser.parser,arr,algorithm);
 			
 			solver.solve();
 					} 

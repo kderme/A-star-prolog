@@ -166,7 +166,7 @@ public class PrologParser {
 							
 						}
 						else{
-							String s="next("+nid+","+last[3]+","+dist/speed+").";
+							String s="next("+nid+","+last[3]+","+(-dist/speed)+").";
 							pwNext.println(s);
 							node.add(node2,dist/speed);
 						}
